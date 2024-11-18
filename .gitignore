@@ -1,3 +1,13 @@
+# Locally ignoring .ipynb, .json, model_weights, and data
+*/base_data
+*/xyr_data
+*.ipynb
+*.json
+*/tf_record
+*/wandb
+*/BaseModel
+*/SavedModels
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
