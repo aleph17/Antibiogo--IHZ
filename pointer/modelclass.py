@@ -4,14 +4,43 @@
 
 """
 import tensorflow as tf
+import numpy as np
+from scipy.optimize import linear_sum_assignment
 tf.config.run_functions_eagerly(True)
 
 class CustomModel(tf.keras.Model):
+  def hungarian_loss(self, y_true, y_pred):
+    def compute_batch_loss(args):
+      y_true, y_pred = args
+      # Compute pairwise Euclidean distance matrix
+      dist_matrix = tf.norm(
+        y_true[:, tf.newaxis] - y_pred[tf.newaxis, :],
+        axis=-1
+      )
+      # Convert to numpy for Hungarian algorithm
+      dist_matrix_np = dist_matrix.numpy()
+      # Apply Hungarian algorithm
+      row_ind, col_ind = linear_sum_assignment(dist_matrix_np)
+      # Calculate loss for this batch
+      return tf.reduce_sum(tf.gather_nd(
+        dist_matrix,
+        tf.stack([row_ind, col_ind], axis=1)
+      ))
+
+    # Map the computation over the batch dimension
+    batch_losses = tf.map_fn(
+      compute_batch_loss,
+      (y_true, y_pred),
+      fn_output_signature=tf.float32
+    )
+
+    # Return average loss across batch
+    return tf.reduce_mean(batch_losses)
+
+
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.loss_tracker = tf.keras.metrics.Mean(name="loss")
-    self.mae_metric = tf.keras.metrics.MeanAbsoluteError(name="mae")
-    self.mse_metric = tf.keras.metrics.MeanSquaredError(name="mse")
 
   def train_step(self, data):
     # print(data)
@@ -24,17 +53,17 @@ class CustomModel(tf.keras.Model):
         predictions = self(image, training=True)
         # print("Predictions shape:", predictions.shape)
         # Compute the loss.
-        loss_value = tf.keras.losses.MeanSquaredError()(y_true=target, y_pred=predictions)
+        loss_value = self.hungarian_loss(y_true = target, y_pred = predictions)
     # Compute gradients and update weights
     trainable_vars = self.trainable_variables
+    # print(loss_value)
     grads = tape.gradient(loss_value, trainable_vars)
+    # print(grads)
     self.optimizer.apply_gradients(zip(grads, trainable_vars))
     # Update metrics
     self.loss_tracker.update_state(loss_value)
-    self.mae_metric.update_state(target, predictions)
-    self.mse_metric.update_state(target, predictions)
     # Return a dict mapping metric names to current value
-    return {"loss": self.loss_tracker.result(), "mae": self.mae_metric.result(), "mse": self.mse_metric.result()}
+    return {"loss": self.loss_tracker.result()}
 
   def test_step(self, data):
     # Unpack the data.
@@ -42,14 +71,12 @@ class CustomModel(tf.keras.Model):
     # Compute predictions
     predictions = self(image, training=False)
     # Compute the loss.
-    loss_value = tf.keras.losses.MeanSquaredError()(y_true=target, y_pred=predictions)
+    loss_value = self.hungarian_loss(y_true=target, y_pred=predictions)
     # Update metrics
     self.loss_tracker.update_state(loss_value)
-    self.mae_metric.update_state(target, predictions)
-    self.mse_metric.update_state(target, predictions)
     # Return a dict mapping metric names to current value
-    return {"loss": self.loss_tracker.result(), "mae": self.mae_metric.result(), "mse": self.mse_metric.result()}
+    return {"loss": self.loss_tracker.result()}
 
   @property
   def metrics(self):
-      return [self.loss_tracker, self.mae_metric, self.mse_metric]
+      return [self.loss_tracker]

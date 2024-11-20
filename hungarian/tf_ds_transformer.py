@@ -31,19 +31,22 @@ def normalize(input_img: tf.Tensor) -> tf.Tensor:
 
 
 def load_image(input_img: tf.string, corr:dict) -> tuple[tf.Tensor, tf.Tensor]:
-    filename = tf.strings.split(input_img, '/')[-1]
-    filename = filename.numpy().decode('utf-8')
+    # filename = tf.strings.split(input_img, '/')[-1]
+    # filename = filename.numpy().decode('utf-8')
+
+    if isinstance(input_img, tf.Tensor):
+        input_img = input_img.numpy().decode('utf-8')
+    
+    # Get filename more safely
+    filename = os.path.basename(input_img)
     target = corr[filename]
     target = np.pad(target, ((0, 16 - len(target)), (0, 0)), 'constant', constant_values=0)
-    target = tf.convert_to_tensor(target, dtype=tf.float32)
+    target = tf.convert_to_tensor(target/(1024/IMG_SIZE), dtype=tf.float32)
 
     img = tf.io.read_file(input_img)
     img = tf.io.decode_jpeg(img)
-    # img = tf.image.resize(img, (IMG_SIZE, IMG_SIZE), method= tf.image.ResizeMethod.BILINEAR, antialias=False)
+    img = tf.image.resize(img, (IMG_SIZE, IMG_SIZE), method= tf.image.ResizeMethod.BILINEAR, antialias=False)
     img = normalize(img)
-
-    r, g, b = img[:, :, 0], img[:, :, 1], img[:, :, 2]
-    img = tf.stack([r, g, b], axis=-1)
 
     return img, target
 

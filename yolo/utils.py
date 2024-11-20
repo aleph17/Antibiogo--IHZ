@@ -9,18 +9,22 @@ import numpy as np
 
 
 # root_path = getenv("ROOT_DIR")
-root_path = '/mloscratch/sayfiddi/hungarian'
+root_path = '/mloscratch/sayfiddi/yolo'
 img_pth = path.join(root_path,"base_data/ready")
+annot_path = path.join(root_path, 'base_data/annot.json')
+classes_path = path.join(root_path, 'base_data/classes.json')
+
+
+
 train_dir = path.join(root_path,"tf_record/Train")
 val_dir = path.join(root_path,"tf_record/Valid")
 test_dir = path.join(root_path,"tf_record/Test")
 orig_train_dir = path.join(root_path,"tf_record/Original_Train")
-corDictDir = path.join(root_path,"base_data/circles_H1024.json")
 
 tf_global_seed = 1234
 np_seed = 1234
 shuffle_data_seed = 12345
-initial_bias = 354
+initial_bias = -1.84606594
 
 
 # Hyper-parameters
@@ -28,14 +32,14 @@ AUTOTUNE = tf.data.AUTOTUNE
 BUFFER_SIZE = 128
 BATCH_SIZE = 32
 LEARNING_RATE = 0.0003
+GLOBAL_CLIPNORM = 10.0
+class_ids = ["None", "ihz", 'pellet', 'dish']
+class_mapping = dict(zip(range(len(class_ids)), class_ids))
 # The required image size.
 
 
 IMG_SIZE = 1024
 OUTPUT_CLASSES = 2
-EXPR_BATCHES = [1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 32, 64, 128, 256, 512]
-EXPR_FILTERS = [8, 16, 32, 64]
-EXPR_WEIGHTS = [0.1, 0.01, 0.001, 0.0001]
 
 
 def display(display_list:List)->None:
@@ -53,14 +57,29 @@ def display(display_list:List)->None:
   plt.show()
 
 
+  # def drawer(image, tars):
+  #   colors = ['green', 'red']
+  #   draw = ImageDraw.Draw(image)
+  #   for i in range(len(tars)):
+  #     boxes = tars[i]
+  #     for box in boxes:
+  #         if all(coord == -1 for coord in box):  # Skip invalid boxes
+  #             continue
+  #         x_min = int(box[0] - box[3] / 2)
+  #         y_min = int(box[1] - box[2] / 2)
+  #         x_max = int(box[0] + box[3] / 2)
+  #         y_max = int(box[1] + box[2] / 2)
+  #         if x_min>0 and x_max < 1024 and y_min>0 and y_max < 1024:
+  #           draw.rectangle([x_min, y_min, x_max, y_max], outline=colors[i], width=2)
+      
+  #   return image
 def drawer(image: list, tars: list):
-  # Assuming target is [x, y, r] from model prediction
   colors = [(0,255,0), (255, 0, 0)]
   for i in range(len(tars)):
     target = tars[i]
     for circle in target:
-      x, y, r = circle  # center (x, y) and radius (r)
-
+      x, y, w, h = circle  # center (x, y) and radius (r)
+      r = (w+h)/4
       # Convert to top-left and bottom-right coordinates
       if x>10 and y>10:
         top_left = (x - r, y - r)
@@ -82,8 +101,4 @@ def targetize(pred_target):
   return pred_target
 
 
-
-  
-# Instantiate an optimizer.
-optimAdam = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 

@@ -26,13 +26,13 @@ class DisplayCallback(tf.keras.callbacks.Callback):
   def on_train_begin(self, logs=None):
       wandb.log({"Prediction": [wandb.Image(drawer(array_to_img(sample_image), [sample_target]), caption="Base truth"),
                                 wandb.Image(drawer(array_to_img(sample_image), [sample_target, targetize(self.model.predict(sample_image[tf.newaxis, ...]))]),caption="Compare"),
-                                wandb.Image(drawer(array_to_img(sample_image), [[[0,0,0]], targetize(self.model.predict(sample_image[tf.newaxis, ...]))]),caption=f"Prediction start")]})
+                                wandb.Image(drawer(array_to_img(sample_image), [[[0,0]], targetize(self.model.predict(sample_image[tf.newaxis, ...]))]),caption=f"Prediction start")]})
 
   def on_epoch_end(self, epoch, logs=None):
       if epoch%2==0:
           wandb.log({"Prediction": [wandb.Image(drawer(array_to_img(sample_image), [sample_target]), caption="Base truth"),
                                 wandb.Image(drawer(array_to_img(sample_image), [sample_target, targetize(self.model.predict(sample_image[tf.newaxis, ...]))]),caption="Compare"),
-                                wandb.Image(drawer(array_to_img(sample_image), [[[0,0,0]], targetize(self.model.predict(sample_image[tf.newaxis, ...]))]),caption=f"Prediction epoch - {epoch}")]})
+                                wandb.Image(drawer(array_to_img(sample_image), [[[0,0]], targetize(self.model.predict(sample_image[tf.newaxis, ...]))]),caption=f"Prediction epoch - {epoch}")]})
 
 
           

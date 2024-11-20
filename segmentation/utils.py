@@ -4,13 +4,11 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.utils import array_to_img
 from os import path,getenv
 import tensorflow as tf
-import cv2 as cv
-import numpy as np
 
 
 # root_path = getenv("ROOT_DIR")
-root_path = '/home/muhammad-ali/working'
-img_pth = path.join(root_path,"base_data/padded")
+root_path = '/mloscratch/sayfiddi/segmentation'
+img_pth = path.join(root_path,"base_data/images")
 train_dir = path.join(root_path,"tf_record/Train")
 val_dir = path.join(root_path,"tf_record/Valid")
 test_dir = path.join(root_path,"tf_record/Test")
@@ -25,16 +23,16 @@ initial_bias = -1.84606594
 
 # Hyper-parameters
 AUTOTUNE = tf.data.AUTOTUNE
-BUFFER_SIZE = 1024
+BUFFER_SIZE = 128
 BATCH_SIZE = 32
 LEARNING_RATE = 0.0003
 # The required image size.
 
 
-IMG_SIZE = 256
+IMG_SIZE = 1024
 OUTPUT_CLASSES = 2
 EXPR_BATCHES = [1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 32, 64, 128, 256, 512]
-EXPR_FILTERS = [8, 16, 32, 64]
+EXPR_FILTERS = [8, 12, 32, 64]
 EXPR_WEIGHTS = [0.1, 0.01, 0.001, 0.0001]
 
 
@@ -62,22 +60,6 @@ def create_mask(pred_mask):
   pred_mask = pred_mask[..., tf.newaxis]
   return pred_mask[0]
 
-def calculate_iou(pred_xyr: list, truth_xyr: list, size: int):
-    pred = np.zeros([size, size])
-    truth = np.zeros([size, size])
-    for circ in pred_xyr:
-        x, y, r = circ
-        cv.circle(pred, (int(x),int(y)), int(r), 1, -1)
-    for circ in truth:
-        x, y, r = circ
-        cv.circle(truth, (int(x),int(y)), int(r), 1, -1)
-    
-    intersection = np.logical_and(pred, truth).sum()
-    union = np.logical_or(pred, truth).sum()
-    
-    if union == 0:
-        return 1 if intersection == 0 else 0  # Perfect match if both are empty, else 0
-    return intersection / union
   
 # Instantiate an optimizer.
 optimAdam = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)

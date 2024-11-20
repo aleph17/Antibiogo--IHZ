@@ -315,6 +315,7 @@ train_dataset = train_dataset.concatenate(bright_data8).concatenate(bright_data7
 """ above we have problems with the data being concatenated. -> shape (None, None, 3)"""
 train_dataset = train_dataset.concatenate(bgr_data).concatenate(xyz_data).concatenate(hsv_data).concatenate(cielab_data)
 
+
 # Save the Training dataset with the augmented one.
 Path(train_dir).mkdir(parents=True)
 dir_files = listdir(train_dir)

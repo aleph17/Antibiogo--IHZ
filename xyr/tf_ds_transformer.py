@@ -1,20 +1,24 @@
+import os
+
 from numpy.random import seed as seednp
 import tensorflow as tf
 from typing import Tuple
 from pathlib import Path
 from os import listdir
+import json
 from utils import IMG_SIZE, BUFFER_SIZE, AUTOTUNE, shuffle_data_seed, tf_global_seed, np_seed, img_pth, train_dir, \
-    val_dir, test_dir, orig_train_dir
+    val_dir, test_dir, orig_train_dir, corDictDir
 
 tf.random.set_seed(tf_global_seed)
 seednp(np_seed)
+# tf.config.run_functions_eagerly(True)
 
 vald_ratio = 0.2
 test_ratio = 0.1
 
-img_dir = Path(img_pth).with_suffix('')
+img_dir = [os.path.join(img_pth, x) for x in os.listdir(img_pth)]
 
-img_list_ds = tf.data.Dataset.list_files([str(img_dir / '*.jp*')], shuffle=False)
+img_list_ds = tf.data.Dataset.list_files(img_dir, shuffle=False)
 
 data_count = tf.data.experimental.cardinality(img_list_ds).numpy()
 
@@ -24,28 +28,25 @@ def normalize(input_img: tf.Tensor) -> tf.Tensor:
     return input_image
 
 
-def load_image(input_img: str, input_mask: str) -> tuple[tf.Tensor, tf.Tensor]:
-    input_img = tf.io.decode_jpeg(input_img)
-    input_img = tf.image.resize(input_img, (IMG_SIZE, IMG_SIZE), method=tf.image.ResizeMethod.BILINEAR)
+def load_image(input_img: tf.string, corr:dict) -> tuple[tf.Tensor, tf.Tensor]:
+    if isinstance(input_img, tf.Tensor):
+        input_img = input_img.numpy().decode('utf-8')
+    filename = os.path.basename(input_img)
+    target = tf.convert_to_tensor(corr[filename]/(256/IMG_SIZE), dtype=tf.float32)
 
-    input_mask = tf.io.decode_jpeg(input_mask, channels = 1)
-    input_mask = tf.image.resize(input_mask, (IMG_SIZE, IMG_SIZE), method=tf.image.ResizeMethod.BILINEAR)
+    img = tf.io.read_file(input_img)
+    img = tf.io.decode_jpeg(img)
+    img = tf.image.resize(img, (IMG_SIZE, IMG_SIZE), method= tf.image.ResizeMethod.BILINEAR, antialias=False)
+    img = normalize(img)
 
-    input_img = normalize(input_img)
-    input_mask = tf.cast(input_mask / 255, tf.int8)
+    return img, target
 
-    r, g, b = input_img[:, :, 0], input_img[:, :, 1], input_img[:, :, 2]
-    input_img = tf.stack([r, g, b], axis=-1)
-
-    return input_img, input_mask
-
-
+@tf.py_function(Tout= (tf.float32, tf.float32))
 def process_path(image_path: str) -> Tuple:
-    mask_path = tf.strings.regex_replace(image_path, "images", "masks_01")
-    img = tf.io.read_file(image_path)
-    mask = tf.io.read_file(mask_path)
-    img, mask = load_image(img, mask)
-    return img, mask
+    corr = json.load(open(corDictDir))
+    img, target = load_image(image_path, corr)
+    return img, target
+
 
 
 ready_ds = img_list_ds.take(data_count).shuffle(BUFFER_SIZE, seed=shuffle_data_seed).map(process_path,

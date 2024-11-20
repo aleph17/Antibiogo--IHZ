@@ -15,11 +15,11 @@ for images, masks in single_batch:
 # Callbacks 
 #EarlyStopping_callback = tf.keras.callbacks.EarlyStopping(patience=3)
 checkpoint_filepath = 'BaseModel/checkpoint.model.keras'
-# savemodel_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_filepath,
-#                                                         monitor='val_loss',
-#                                                         save_best_only=True,
-#                                                         mode='min'
-#                                                         )
+savemodel_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_filepath,
+                                                        monitor='val_loss',
+                                                        save_best_only=True,
+                                                        mode='min'
+                                                        )
 
 
 class DisplayCallback(tf.keras.callbacks.Callback):

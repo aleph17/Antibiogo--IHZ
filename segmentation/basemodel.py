@@ -35,9 +35,9 @@ def unet_model(output_channels:int):
 
     up_stack = [
         pix2pix.upsample(int(filters), 3),  # 8x8 -> 16x16
-        pix2pix.upsample(int(filters)/2, 3),  # 16x16 -> 32x32
-        pix2pix.upsample(int(filters)/4, 3),  # 32x32 -> 64x64
-        pix2pix.upsample(int(filters)/8, 3),   # 64x64 -> 128x128
+        pix2pix.upsample(int(filters/2), 3),  # 16x16 -> 32x32
+        pix2pix.upsample(int(filters/4), 3),  # 32x32 -> 64x64
+        pix2pix.upsample(int(filters/8), 3),   # 64x64 -> 128x128
     ]
     inputs = tf.keras.layers.Input(shape=[IMG_SIZE, IMG_SIZE, 3])
     # Downsampling through the model

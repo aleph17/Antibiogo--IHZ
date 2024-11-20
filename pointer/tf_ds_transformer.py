@@ -1,10 +1,11 @@
 import os
-
 from numpy.random import seed as seednp
+import numpy as np
 import tensorflow as tf
 from typing import Tuple
 from pathlib import Path
 from os import listdir
+
 import json
 from utils import IMG_SIZE, BUFFER_SIZE, AUTOTUNE, shuffle_data_seed, tf_global_seed, np_seed, img_pth, train_dir, \
     val_dir, test_dir, orig_train_dir, corDictDir
@@ -12,6 +13,7 @@ from utils import IMG_SIZE, BUFFER_SIZE, AUTOTUNE, shuffle_data_seed, tf_global_
 tf.random.set_seed(tf_global_seed)
 seednp(np_seed)
 # tf.config.run_functions_eagerly(True)
+
 
 vald_ratio = 0.2
 test_ratio = 0.1
@@ -29,12 +31,19 @@ def normalize(input_img: tf.Tensor) -> tf.Tensor:
 
 
 def load_image(input_img: tf.string, corr:dict) -> tuple[tf.Tensor, tf.Tensor]:
-    filename = tf.strings.split(input_img, '/')[-1]
-    filename = filename.numpy().decode('utf-8')
-    target = tf.convert_to_tensor(corr[filename])
+    if isinstance(input_img, tf.Tensor):
+        input_img = input_img.numpy().decode('utf-8')
+    
+    # Get filename more safely
+    filename = os.path.basename(input_img)
+    target = [[elem[0], elem[1]] for elem in corr[filename]]
 
+    target = np.pad(target, ((0, 16 - len(target)), (0, 0)), 'constant', constant_values=0)
+    target = tf.convert_to_tensor(target/(1024/IMG_SIZE), dtype=tf.float32)
+    print(target)
     img = tf.io.read_file(input_img)
     img = tf.io.decode_jpeg(img)
+    img = tf.image.resize(img, (IMG_SIZE, IMG_SIZE), method= tf.image.ResizeMethod.BILINEAR, antialias=False)
     img = normalize(img)
 
     r, g, b = img[:, :, 0], img[:, :, 1], img[:, :, 2]

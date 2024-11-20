@@ -9,23 +9,23 @@ import numpy as np
 
 
 # root_path = getenv("ROOT_DIR")
-root_path = '/home/muhammad-ali/working/OD+prediction'
-img_pth = path.join(root_path,"xyr_data")
+root_path = '/mloscratch/sayfiddi/pointer'
+img_pth = path.join(root_path,"base_data/ready")
 train_dir = path.join(root_path,"tf_record/Train")
 val_dir = path.join(root_path,"tf_record/Valid")
 test_dir = path.join(root_path,"tf_record/Test")
 orig_train_dir = path.join(root_path,"tf_record/Original_Train")
-corDictDir = '/home/muhammad-ali/working/OD+prediction/frame_corr.json'
+corDictDir = path.join(root_path,"base_data/circles_H1024.json")
 
 tf_global_seed = 1234
 np_seed = 1234
 shuffle_data_seed = 12345
-initial_bias = -1.84606594
+initial_bias = 128
 
 
 # Hyper-parameters
 AUTOTUNE = tf.data.AUTOTUNE
-BUFFER_SIZE = 1024
+BUFFER_SIZE = 128
 BATCH_SIZE = 32
 LEARNING_RATE = 0.0003
 # The required image size.
@@ -53,21 +53,26 @@ def display(display_list:List)->None:
   plt.show()
 
 
-def drawer(image, target):
+def drawer(image: list, tars: list):
   # Assuming target is [x, y, r] from model prediction
-  x, y, r = target  # center (x, y) and radius (r)
+  colors = [(0,255,0), (255, 0, 0)]
+  for i in range(len(tars)):
+    target = tars[i]
+    for circle in target:
+      x, y= circle  # center (x, y) and radius (r)
+      r = 2
+      # Convert to top-left and bottom-right coordinates
+      if x>10 and y>10:
+        top_left = (x - r, y - r)
+        bottom_right = (x + r, y + r)
 
-  # Convert to top-left and bottom-right coordinates
-  top_left = (x - r, y - r)
-  bottom_right = (x + r, y + r)
+        # Ensure the coordinates are in the correct order
+        top_left = (min(top_left[0], bottom_right[0]), min(top_left[1], bottom_right[1]))
+        bottom_right = (max(top_left[0], bottom_right[0]), max(top_left[1], bottom_right[1]))
 
-  # Ensure the coordinates are in the correct order
-  top_left = (min(top_left[0], bottom_right[0]), min(top_left[1], bottom_right[1]))
-  bottom_right = (max(top_left[0], bottom_right[0]), max(top_left[1], bottom_right[1]))
-
-  # Draw ellipse
-  draw = ImageDraw.Draw(image)
-  draw.ellipse([top_left, bottom_right], outline=(255, 0, 0), width=3)
+        # Draw ellipse
+        draw = ImageDraw.Draw(image)
+        draw.ellipse([top_left, bottom_right], fill=colors[i])
   return image
 
 

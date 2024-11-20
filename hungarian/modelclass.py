@@ -37,33 +37,47 @@ class CustomModel(tf.keras.Model):
     # Return average loss across batch
     return tf.reduce_mean(batch_losses)
 
+  def compute_prediction_ratio(self, y_true, y_pred):
+    def count_nonzero_vectors(tensor):
+        # Consider a vector non-zero if any of its components are non-zero
+        return tf.reduce_sum(tf.cast(
+            tf.reduce_any(tf.not_equal(tensor, 0), axis=-1),
+            tf.float32
+        ))
+    
+    # Count non-zero vectors in both tensors
+    true_count = count_nonzero_vectors(y_true)
+    pred_count = count_nonzero_vectors(y_pred)
+    
+    # Compute ratio (pred_count / true_count)
+    # Add small epsilon to avoid division by zero
+    ratio = pred_count / (true_count + tf.keras.backend.epsilon())
+    
+    return ratio
+
 
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.loss_tracker = tf.keras.metrics.Mean(name="loss")
+    self.pred_ratio_tracker = tf.keras.metrics.Mean(name="pred_ratio")
 
   def train_step(self, data):
-    # print(data)
     image, target = data
-    # print("Train step - Image shape:", tf.shape(image))
-    # print("Train step - Target shape:", tf.shape(target))
-    # Open a GradientTape.
     with tf.GradientTape() as tape:
-        # Forward pass.
         predictions = self(image, training=True)
-        # print("Predictions shape:", predictions.shape)
-        # Compute the loss.
         loss_value = self.hungarian_loss(y_true = target, y_pred = predictions)
+
     # Compute gradients and update weights
     trainable_vars = self.trainable_variables
-    # print(loss_value)
     grads = tape.gradient(loss_value, trainable_vars)
-    # print(grads)
     self.optimizer.apply_gradients(zip(grads, trainable_vars))
+
+    pred_ratio = self.compute_prediction_ratio(target, predictions)
     # Update metrics
     self.loss_tracker.update_state(loss_value)
+    self.pred_ratio_tracker.update_state(pred_ratio)
     # Return a dict mapping metric names to current value
-    return {"loss": self.loss_tracker.result()}
+    return {"loss": self.loss_tracker.result(), "pred_ratio": self.pred_ratio_tracker.result()}
 
   def test_step(self, data):
     # Unpack the data.
@@ -72,11 +86,13 @@ class CustomModel(tf.keras.Model):
     predictions = self(image, training=False)
     # Compute the loss.
     loss_value = self.hungarian_loss(y_true=target, y_pred=predictions)
+    pred_ratio = self.compute_prediction_ratio(target, predictions)
     # Update metrics
     self.loss_tracker.update_state(loss_value)
+    self.pred_ratio_tracker.update_state(pred_ratio)
     # Return a dict mapping metric names to current value
-    return {"loss": self.loss_tracker.result()}
+    return {"loss": self.loss_tracker.result(), "pred_ratio": self.pred_ratio_tracker.result()}
 
   @property
   def metrics(self):
-      return [self.loss_tracker]
+      return [self.loss_tracker, self.pred_ratio_tracker]
