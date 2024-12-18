@@ -35,11 +35,10 @@ for batch_idx, batch in enumerate(test_batches):
 
     for img_idx, (image, img_circles) in enumerate(zip(images, true_circles)):
         results += [calculate_iou(list(targetize(model.predict(image[tf.newaxis, ...]))), list(img_circles), (256,256))]
-
         i += 1
         if i % 100 == 0:
             print(f'{i} images done')
 print(np.mean(results))
-
+print(results)
 with open('iou.json', 'w') as f:
     json.dump(results, f)
